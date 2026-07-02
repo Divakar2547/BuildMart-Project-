@@ -1,0 +1,15 @@
+{
+  "name": "buildmart",
+  "version": "1.0.0",
+  "description": "BuildMart - Construction Materials E-Commerce Platform",
+  "scripts": {
+    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "seed": "node backend/seed.js",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "start": "node backend/server.js",
+    "start:backend": "npm start --prefix backend",
+    "build": "npm run build:frontend",
+    "build:frontend": "npm run build --prefix frontend"
+  }
+}
