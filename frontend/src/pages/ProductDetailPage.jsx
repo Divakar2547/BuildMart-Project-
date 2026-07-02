@@ -106,18 +106,24 @@ export default function ProductDetailPage() {
           )}
 
           {/* Price */}
-          <div className="bg-steel-50 rounded-xl p-4">
+          <div className="bg-primary-50 border border-primary-100 rounded-xl p-4">
             <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-bold text-steel-900">{formatPrice(product.price)}</span>
-              <span className="text-steel-500">/ {product.unit}</span>
+              <span className="text-4xl font-extrabold text-primary-600">{formatPrice(product.price)}</span>
+              <span className="text-steel-500 font-medium">/ {product.unit}</span>
               {product.originalPrice && (
                 <>
                   <span className="text-steel-400 line-through text-lg">{formatPrice(product.originalPrice)}</span>
-                  <span className="text-green-600 font-semibold text-sm">{discount}% off</span>
+                  <span className="text-green-600 font-bold text-sm bg-green-50 px-2 py-0.5 rounded-full">{discount}% off</span>
                 </>
               )}
             </div>
             <p className="text-xs text-steel-500 mt-1">* Prices exclude GST. GST will be added at checkout.</p>
+          </div>
+
+          {/* Description */}
+          <div className="bg-steel-50 rounded-xl p-4">
+            <h3 className="font-semibold text-steel-800 mb-2">Description</h3>
+            <p className="text-steel-600 text-sm leading-relaxed">{product.description}</p>
           </div>
 
           {/* Stock */}
@@ -171,12 +177,6 @@ export default function ProductDetailPage() {
                 <span className="text-xs text-steel-600 font-medium">{text}</span>
               </div>
             ))}
-          </div>
-
-          {/* Description */}
-          <div>
-            <h3 className="font-semibold text-steel-800 mb-2">Description</h3>
-            <p className="text-steel-600 text-sm leading-relaxed">{product.description}</p>
           </div>
 
           {/* Specifications */}

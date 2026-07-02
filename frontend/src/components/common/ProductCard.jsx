@@ -79,7 +79,13 @@ export default function ProductCard({ product }) {
         </Link>
 
         {product.brand && (
-          <p className="text-xs mb-2" style={{ color: '#6b7280' }}>by {product.brand}</p>
+          <p className="text-xs mb-1" style={{ color: '#6b7280' }}>by {product.brand}</p>
+        )}
+
+        {product.description && (
+          <p className="text-xs mb-2 line-clamp-2 leading-relaxed" style={{ color: '#6b7280' }}>
+            {product.description}
+          </p>
         )}
 
         <div className="flex items-baseline gap-2 mt-auto mb-3">
