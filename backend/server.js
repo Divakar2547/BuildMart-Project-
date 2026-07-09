@@ -7,6 +7,9 @@ dotenv.config();
 
 const app = express();
 
+app.set('trust proxy', 1);
+app.locals.dbConnected = false;
+
 // Middleware
 app.use(cors({
   origin: function (origin, callback) {
@@ -36,7 +39,11 @@ app.use('/api/admin', require('./routes/adminRoutes'));
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'BuildMart API is running', timestamp: new Date() });
+  res.json({
+    status: 'BuildMart API is running',
+    timestamp: new Date(),
+    database: app.locals.dbConnected ? 'connected' : 'disconnected'
+  });
 });
 
 // Error handler
@@ -49,19 +56,29 @@ app.use((err, req, res, next) => {
 });
 
 // Connect to MongoDB & Start Server
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
+const HOST = process.env.HOST || '0.0.0.0';
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/buildmart';
 
-mongoose.connect(MONGODB_URI)
+const startServer = () => {
+  app.listen(PORT, HOST, () => {
+    console.log(`🚀 BuildMart server running on port ${PORT} on ${HOST}`);
+  });
+};
+
+mongoose.connect(MONGODB_URI, {
+  serverSelectionTimeoutMS: 5000
+})
   .then(() => {
+    app.locals.dbConnected = true;
     console.log('✅ MongoDB connected successfully');
-    app.listen(PORT, () => {
-      console.log(`🚀 BuildMart server running on port ${PORT}`);
-    });
+    startServer();
   })
   .catch(err => {
+    app.locals.dbConnected = false;
     console.error('❌ MongoDB connection error:', err.message);
-    process.exit(1);
+    console.error('Connection string used:', MONGODB_URI && MONGODB_URI.replace(/:.+@/, ':*****@'));
+    startServer();
   });
 
 module.exports = app;

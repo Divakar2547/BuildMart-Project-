@@ -32,9 +32,9 @@ exports.addToCart = async (req, res) => {
     const existingItem = cart.items.find(item => item.product.toString() === productId);
     if (existingItem) {
       existingItem.quantity += quantity;
-      existingItem.price = product.price;
+      existingItem.price = Number(product.price) || existingItem.price || 0;
     } else {
-      cart.items.push({ product: productId, quantity, price: product.price });
+      cart.items.push({ product: productId, quantity, price: Number(product.price) || 0 });
     }
 
     cart.calculateTotal();
@@ -54,13 +54,16 @@ exports.updateCartItem = async (req, res) => {
     const cart = await Cart.findOne({ user: req.user._id });
     if (!cart) return res.status(404).json({ success: false, message: 'Cart not found' });
 
+    await cart.populate('items.product');
+
     const item = cart.items.id(itemId);
     if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
 
     if (quantity <= 0) {
       cart.items.pull(itemId);
     } else {
-      item.quantity = quantity;
+      item.quantity = Number(quantity) || item.quantity || 0;
+      item.price = (item.price !== undefined && item.price !== null) ? Number(item.price) : (item.product && Number(item.product.price)) || 0;
     }
 
     cart.calculateTotal();

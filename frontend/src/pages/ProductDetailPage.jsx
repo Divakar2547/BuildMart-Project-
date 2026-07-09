@@ -14,6 +14,28 @@ const CATEGORY_IMAGES = {
   'Paint': 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=600&q=80',
 };
 
+const getDeliveryRange = () => {
+  const today = new Date();
+  const addBusinessDays = (date, days) => {
+    let d = new Date(date);
+    let added = 0;
+    while (added < days) {
+      d.setDate(d.getDate() + 1);
+      if (d.getDay() !== 0 && d.getDay() !== 6) added++;
+    }
+    return d;
+  };
+  const fmt = (d) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  return `${fmt(addBusinessDays(today, 3))} – ${fmt(addBusinessDays(today, 6))}`;
+};
+
+const getDeliveryCharge = (amount) => {
+  if (amount >= 5000) return 0;
+  if (amount >= 2000) return 149;
+  if (amount >= 500) return 299;
+  return 399;
+};
+
 export default function ProductDetailPage() {
   const { id } = useParams();
   const { addToCart, cartLoading } = useCart();
@@ -53,7 +75,13 @@ export default function ProductDetailPage() {
   );
 
   const imageUrl = product.images?.[0]?.url || CATEGORY_IMAGES[product.category] || 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=80';
-  const discount = product.originalPrice ? Math.round((1 - product.price / product.originalPrice) * 100) : 0;
+  const priceValue = Number(product?.price ?? 0);
+  const originalPriceValue = Number(product?.originalPrice ?? 0);
+  const displayPrice = Number.isFinite(priceValue) && priceValue > 0 ? priceValue : (Number.isFinite(originalPriceValue) && originalPriceValue > 0 ? originalPriceValue : 0);
+  const discount = originalPriceValue > 0 && displayPrice > 0 && displayPrice < originalPriceValue ? Math.round((1 - displayPrice / originalPriceValue) * 100) : 0;
+  const deliveryRange = getDeliveryRange();
+  const deliveryCharge = getDeliveryCharge(displayPrice);
+  const descriptionText = product.description || `Premium ${product.name} by ${product.brand || 'BuildMart'} with reliable quality for construction and home improvement needs.`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -106,24 +134,34 @@ export default function ProductDetailPage() {
           )}
 
           {/* Price */}
-          <div className="bg-primary-50 border border-primary-100 rounded-xl p-4">
+          <div className="bg-steel-50 rounded-xl p-4">
             <div className="flex items-baseline gap-3">
-              <span className="text-4xl font-extrabold text-primary-600">{formatPrice(product.price)}</span>
-              <span className="text-steel-500 font-medium">/ {product.unit}</span>
-              {product.originalPrice && (
+              <span className="text-3xl font-bold text-steel-900">{formatPrice(displayPrice)}</span>
+              <span className="text-steel-500">/ {product.unit}</span>
+              {originalPriceValue > 0 && (
                 <>
-                  <span className="text-steel-400 line-through text-lg">{formatPrice(product.originalPrice)}</span>
-                  <span className="text-green-600 font-bold text-sm bg-green-50 px-2 py-0.5 rounded-full">{discount}% off</span>
+                  <span className="text-steel-400 line-through text-lg">{formatPrice(originalPriceValue)}</span>
+                  <span className="text-green-600 font-semibold text-sm">{discount}% off</span>
                 </>
               )}
             </div>
-            <p className="text-xs text-steel-500 mt-1">* Prices exclude GST. GST will be added at checkout.</p>
+            <p className="text-xs text-steel-500 mt-1">Price shown in Indian Rupees (₹). GST will be added at checkout.</p>
           </div>
 
-          {/* Description */}
-          <div className="bg-steel-50 rounded-xl p-4">
-            <h3 className="font-semibold text-steel-800 mb-2">Description</h3>
-            <p className="text-steel-600 text-sm leading-relaxed">{product.description}</p>
+          {/* Delivery Details */}
+          <div className="rounded-xl border border-steel-200 bg-amber-50/70 p-4">
+            <h3 className="font-semibold text-steel-800 mb-2">Delivery Details</h3>
+            <div className="space-y-2 text-sm text-steel-700">
+              <div className="flex items-center justify-between gap-2">
+                <span>Estimated delivery</span>
+                <span className="font-medium text-steel-900">{deliveryRange}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span>Delivery charge</span>
+                <span className="font-medium text-steel-900">{deliveryCharge === 0 ? 'Free' : formatPrice(deliveryCharge)}</span>
+              </div>
+              <p className="text-xs text-steel-500">Free delivery on orders above ₹5,000.</p>
+            </div>
           </div>
 
           {/* Stock */}
@@ -177,6 +215,11 @@ export default function ProductDetailPage() {
                 <span className="text-xs text-steel-600 font-medium">{text}</span>
               </div>
             ))}
+          </div>
+
+          {/* Description */}
+          <div>
+            <p className="text-steel-600 text-sm leading-relaxed">{descriptionText}</p>
           </div>
 
           {/* Specifications */}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   LayoutDashboard, Package, ShoppingBag, Users, TrendingUp,
@@ -36,43 +36,58 @@ export default function AdminPage() {
     specifications: [{ key: '', value: '' }]
   });
 
-  useEffect(() => { loadData(); }, [activeTab]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       if (activeTab === 'dashboard') {
         try {
           const { data } = await adminAPI.getDashboard();
-          setStats(data.stats);
-        } catch { /* keep default */ }
+          setStats(data.stats || { totalRevenue: 0, totalOrders: 0, totalProducts: 0, totalUsers: 0, recentOrders: [] });
+        } catch { /* keep default stats */ }
       } else if (activeTab === 'products') {
-        const { data } = await productAPI.getProducts({ limit: 100 });
-        setProducts(data.products);
+        try {
+          const { data } = await productAPI.getProducts({ limit: 200 });
+          setProducts(Array.isArray(data?.products) ? data.products : []);
+        } catch (err) {
+          setProducts([]);
+          toast.error(err.response?.data?.message || 'Unable to load products');
+        }
       } else if (activeTab === 'orders') {
-        const { data } = await orderAPI.getAllOrders({ limit: 50 });
-        setOrders(data.orders);
+        try {
+          const { data } = await orderAPI.getAllOrders({ limit: 100 });
+          setOrders(Array.isArray(data?.orders) ? data.orders : []);
+        } catch (err) {
+          setOrders([]);
+          toast.error(err.response?.data?.message || 'Unable to load orders');
+        }
       } else if (activeTab === 'users') {
-        const { data } = await adminAPI.getUsers();
-        setUsers(data.users);
+        try {
+          const { data } = await adminAPI.getUsers();
+          setUsers(Array.isArray(data?.users) ? data.users : []);
+        } catch (err) {
+          setUsers([]);
+          toast.error(err.response?.data?.message || 'Unable to load users');
+        }
       }
     } catch (err) {
-      toast.error('Failed to load data');
+      toast.error(err.response?.data?.message || 'Failed to load data');
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab]);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const seedProducts = async () => {
+    const tid = toast.loading('Seeding products...');
     try {
-      toast.loading('Seeding products...');
-      await adminAPI.seedProducts();
-      toast.dismiss();
-      toast.success('12 sample products added!');
-      if (activeTab === 'products') loadData();
+      const { data } = await adminAPI.seedProducts();
+      toast.dismiss(tid);
+      toast.success(data.message || 'Products seeded!');
+      loadData();
     } catch (err) {
-      toast.dismiss();
-      toast.error('Failed to seed products');
+      toast.dismiss(tid);
+      toast.error(err.response?.data?.message || 'Failed to seed products');
     }
   };
 
@@ -105,8 +120,8 @@ export default function AdminPage() {
   };
 
   const saveProduct = async () => {
-    if (!productForm.name || !productForm.price || !productForm.stock) {
-      toast.error('Name, price and stock are required');
+    if (!productForm.name || !productForm.price || !productForm.stock || !productForm.description) {
+      toast.error('Name, price, stock and description are required');
       return;
     }
     try {
@@ -154,10 +169,12 @@ export default function AdminPage() {
     }
   };
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-    p.category.toLowerCase().includes(productSearch.toLowerCase())
-  );
+  const filteredProducts = (products || []).filter((p) => {
+    const searchTerm = (productSearch || '').toLowerCase();
+    const name = (p?.name || '').toLowerCase();
+    const category = (p?.category || '').toLowerCase();
+    return name.includes(searchTerm) || category.includes(searchTerm);
+  });
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f9fafb' }}>
@@ -490,6 +507,10 @@ export default function AdminPage() {
                   <label className="label">Product Name *</label>
                   <input type="text" value={productForm.name} onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))} className="input-field" placeholder="e.g. UltraTech Cement OPC 53 Grade" />
                 </div>
+                <div className="sm:col-span-2">
+                  <label className="label">Description *</label>
+                  <textarea value={productForm.description} onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))} className="input-field" rows={3} placeholder="Describe the product — material, use case, key features..." />
+                </div>
                 <div>
                   <label className="label">Category *</label>
                   <select value={productForm.category} onChange={e => setProductForm(p => ({ ...p, category: e.target.value }))} className="input-field">
@@ -500,27 +521,28 @@ export default function AdminPage() {
                   <label className="label">Brand</label>
                   <input type="text" value={productForm.brand} onChange={e => setProductForm(p => ({ ...p, brand: e.target.value }))} className="input-field" placeholder="e.g. UltraTech" />
                 </div>
-                <div>
-                  <label className="label">Price (₹) *</label>
-                  <input type="number" value={productForm.price} onChange={e => setProductForm(p => ({ ...p, price: e.target.value }))} className="input-field" placeholder="0" />
-                </div>
-                <div>
-                  <label className="label">Original Price (₹)</label>
-                  <input type="number" value={productForm.originalPrice} onChange={e => setProductForm(p => ({ ...p, originalPrice: e.target.value }))} className="input-field" placeholder="For discount display" />
-                </div>
-                <div>
-                  <label className="label">Stock *</label>
-                  <input type="number" value={productForm.stock} onChange={e => setProductForm(p => ({ ...p, stock: e.target.value }))} className="input-field" placeholder="0" />
-                </div>
-                <div>
-                  <label className="label">Unit</label>
-                  <select value={productForm.unit} onChange={e => setProductForm(p => ({ ...p, unit: e.target.value }))} className="input-field">
-                    {['piece', 'bag', 'ton', 'meter', 'kg', 'liter', 'set', 'roll'].map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="label">Description *</label>
-                  <textarea value={productForm.description} onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))} className="input-field" rows={3} placeholder="Product description..." />
+                <div className="sm:col-span-2 rounded-xl border border-steel-700 bg-steel-900/40 p-4">
+                  <div className="mb-3 text-sm font-semibold text-steel-200">Price & Stock</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="label">Selling Price (₹) *</label>
+                      <input type="number" value={productForm.price} onChange={e => setProductForm(p => ({ ...p, price: e.target.value }))} className="input-field" placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="label">Original Price (₹)</label>
+                      <input type="number" value={productForm.originalPrice} onChange={e => setProductForm(p => ({ ...p, originalPrice: e.target.value }))} className="input-field" placeholder="For discount display" />
+                    </div>
+                    <div>
+                      <label className="label">Stock *</label>
+                      <input type="number" value={productForm.stock} onChange={e => setProductForm(p => ({ ...p, stock: e.target.value }))} className="input-field" placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="label">Unit</label>
+                      <select value={productForm.unit} onChange={e => setProductForm(p => ({ ...p, unit: e.target.value }))} className="input-field">
+                        {['piece', 'bag', 'ton', 'meter', 'kg', 'liter', 'set', 'roll'].map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </div>
+                  </div>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="label">Image URL</label>

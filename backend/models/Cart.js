@@ -14,7 +14,8 @@ const cartItemSchema = new mongoose.Schema({
   },
   price: {
     type: Number,
-    required: true
+    required: false,
+    default: 0
   }
 });
 
@@ -34,7 +35,11 @@ const cartSchema = new mongoose.Schema({
 
 cartSchema.methods.calculateTotal = function() {
   this.totalAmount = this.items.reduce((total, item) => {
-    return total + (item.price * item.quantity);
+    const rawPrice = (item.price !== undefined && item.price !== null) ? item.price : (item.product && item.product.price) || 0;
+    const price = Number(rawPrice);
+    const qty = Number(item.quantity) || 0;
+    const line = (Number.isNaN(price) ? 0 : price) * (Number.isNaN(qty) ? 0 : qty);
+    return total + line;
   }, 0);
 };
 

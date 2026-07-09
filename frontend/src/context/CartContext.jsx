@@ -16,7 +16,15 @@ export const CartProvider = ({ children }) => {
       const { data } = await cartAPI.getCart();
       setCart(data.cart);
     } catch (err) {
-      console.error('Fetch cart error:', err);
+      if (err.code === 'ECONNABORTED') {
+        // Render cold start — retry once after 5s
+        setTimeout(async () => {
+          try {
+            const { data } = await cartAPI.getCart();
+            setCart(data.cart);
+          } catch { /* silent */ }
+        }, 5000);
+      }
     }
   }, [user]);
 

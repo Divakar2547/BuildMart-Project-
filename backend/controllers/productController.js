@@ -1,7 +1,21 @@
+const mongoose = require('mongoose');
 const Product = require('../models/Product');
+
+const handleDbUnavailable = (res, message = 'Database unavailable') => {
+  return res.status(503).json({ success: false, message });
+};
 
 exports.getProducts = async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.json({
+        success: true,
+        products: [],
+        total: 0,
+        pages: 0,
+        currentPage: Number(req.query.page || 1)
+      });
+    }
     const { category, search, minPrice, maxPrice, sort, page = 1, limit = 12, featured } = req.query;
     const query = { isActive: { $ne: false } };
 
@@ -46,6 +60,9 @@ exports.getProducts = async (req, res) => {
 
 exports.getProduct = async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return handleDbUnavailable(res, 'Database unavailable');
+    }
     const product = await Product.findById(req.params.id);
     if (!product || product.isActive === false) {
       return res.status(404).json({ success: false, message: 'Product not found' });
@@ -58,6 +75,9 @@ exports.getProduct = async (req, res) => {
 
 exports.createProduct = async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return handleDbUnavailable(res, 'Database unavailable');
+    }
     const product = await Product.create(req.body);
     res.status(201).json({ success: true, product });
   } catch (error) {
@@ -67,6 +87,9 @@ exports.createProduct = async (req, res) => {
 
 exports.updateProduct = async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return handleDbUnavailable(res, 'Database unavailable');
+    }
     const product = await Product.findByIdAndUpdate(
       req.params.id,
       { $set: req.body },
@@ -83,6 +106,9 @@ exports.updateProduct = async (req, res) => {
 
 exports.deleteProduct = async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return handleDbUnavailable(res, 'Database unavailable');
+    }
     const product = await Product.findByIdAndUpdate(
       req.params.id,
       { isActive: false },
@@ -99,6 +125,9 @@ exports.deleteProduct = async (req, res) => {
 
 exports.getCategories = async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.json({ success: true, categories: [] });
+    }
     const categories = await Product.distinct('category', { isActive: { $ne: false } });
     res.json({ success: true, categories });
   } catch (error) {
